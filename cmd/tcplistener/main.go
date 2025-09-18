@@ -1,6 +1,7 @@
 package main
 
 import (
+	"build-http-protocol/internal/request"
 	"fmt"
 	"io"
 	"log"
@@ -42,21 +43,16 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 }
 
 func main() {
-	// f, err := os.Open("message.txt")
-	// if err != nil {
-	// 	log.Fatal("error opening the file message.txt")
-	// }
-
 	listner, err := net.Listen("tcp", ":42069")
 	if err != nil {
 		log.Fatal("error starting the server. Error: ", err.Error())
 	}
 	defer listner.Close()
+
 	for {
 		conn, err := listner.Accept()
 		if err != nil {
-			log.Printf("error accepting a connection. Error message: %s", err.Error())
-			continue
+			log.Fatal("error accepting a connection")
 		}
 		go ConnectionHandler(conn)
 	}
@@ -64,11 +60,18 @@ func main() {
 
 func ConnectionHandler(conn net.Conn) {
 	defer conn.Close()
-	// Handling connection
 	fmt.Println("handling connection...")
-	lines := getLinesChannel(conn)
 
-	for line := range lines {
-		fmt.Printf("Read: %s\n", line)
+	r, err := request.RequestFromReader(conn)
+	if err != nil {
+		log.Fatal("error parsing the request")
 	}
+	fmt.Printf("Request line:\n")
+	fmt.Printf("Method: %s\n", r.RequestLine.Method)
+	fmt.Printf("Target: %s\n", r.RequestLine.RequestTarget)
+	fmt.Printf("Version: %s\n", r.RequestLine.HttpVersion)
+	fmt.Println("Headers:")
+	r.Headers.ForEach(func(c, v string) {
+		fmt.Printf("- %s:%v\n", c, v)
+	})
 }
