@@ -67,11 +67,13 @@ func ConnectionHandler(conn net.Conn) {
 		log.Fatal("error parsing the request")
 	}
 	fmt.Printf("Request line:\n")
-	fmt.Printf("Method: %s\n", r.RequestLine.Method)
-	fmt.Printf("Target: %s\n", r.RequestLine.RequestTarget)
-	fmt.Printf("Version: %s\n", r.RequestLine.HttpVersion)
+	fmt.Printf("- Method: %s\n", r.RequestLine.Method)
+	fmt.Printf("- Target: %s\n", r.RequestLine.RequestTarget)
+	fmt.Printf("- Version: %s\n", r.RequestLine.HttpVersion)
 	fmt.Println("Headers:")
 	r.Headers.ForEach(func(c, v string) {
 		fmt.Printf("- %s:%v\n", c, v)
 	})
+	fmt.Printf("Body:\n")
+	fmt.Printf("%s\n", r.Body)
 }

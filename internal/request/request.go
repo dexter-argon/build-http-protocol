@@ -62,12 +62,6 @@ func newRequest() *Request {
 	}
 }
 
-// type Request struct {
-// 	RequestLine RequestLine
-// 	Headers     map[string]string
-// 	Body        []byte
-// }
-
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request line")
 var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
 var ERROR_REQUEST_IN_ERROR_STATE = fmt.Errorf("request is in error state")
