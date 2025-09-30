@@ -3,14 +3,11 @@ package server
 import (
 	"build-http-protocol/internal/request"
 	"build-http-protocol/internal/response"
-	"bytes"
 	"fmt"
-	"io"
 	"net"
-	"strconv"
 )
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request) *HandlerError
 
 type Server struct {
 	handler Handler
@@ -34,22 +31,21 @@ func runServer(s *Server, listener net.Listener) {
 	}
 }
 
-func writeErrors(w io.ReadWriteCloser, err *HandlerError) {
+func writeErrors(w *response.Writer, err *HandlerError) {
 	h := response.GetDefaultHeaders(len(err.Message))
-
-	response.WriteStatusLine(w, err.StatusCode)
-	response.WriteHeaders(w, h)
-
-	w.Write([]byte(err.Message))
+	w.WriteStatusLine(err.StatusCode)
+	w.WriteHeaders(h)
+	w.WriteBody([]byte(err.Message))
 }
 
-func handleConnection(s *Server, conn io.ReadWriteCloser) {
+func handleConnection(s *Server, conn net.Conn) {
 	defer conn.Close()
 	// 1. parse the request from connection
+	writer := response.NewWriter(conn)
 	req, err := request.RequestFromReader(conn)
 
 	if err != nil {
-		writeErrors(conn, &HandlerError{
+		writeErrors(writer, &HandlerError{
 			Message:    err.Error(),
 			StatusCode: response.StatusBadRequest,
 		})
@@ -57,28 +53,17 @@ func handleConnection(s *Server, conn io.ReadWriteCloser) {
 	}
 
 	// 2. create empty bytes buffer for handler to write to.
-	writer := bytes.NewBuffer([]byte{})
-
 	// 3. call handler function
 	// 4. if handler errs then write the error message to connection
+
 	handleError := s.handler(writer, req)
 	if handleError != nil {
-		writeErrors(conn, &HandlerError{
-			StatusCode: handleError.StatusCode,
-			Message:    handleError.Message,
-		})
+		writeErrors(writer, handleError)
 		return
 	}
 
 	// 5. if handler succeeds
-	fmt.Printf("We are handling your request CLIENT!")
-	body := writer.Bytes()
-	responseHeaders := response.GetDefaultHeaders(0)
-	responseHeaders.Replace("Content-Length", strconv.Itoa(len(body)))
-	response.WriteStatusLine(conn, response.StatusOK)
-	response.WriteHeaders(conn, responseHeaders)
-	conn.Write(body)
-	conn.Close()
+	fmt.Printf("We are handling your request CLIENT!\n")
 }
 
 func Serve(port uint16, handler Handler) (*Server, error) {

@@ -7,9 +7,6 @@ import (
 	"strconv"
 )
 
-type Response struct {
-}
-
 type StatusCode int
 
 const (
@@ -20,10 +17,51 @@ const (
 
 const HTTP_VERSION = "HTTP/1.1"
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
-	fmt.Println("inside the WriteStatusLine")
-	statusLine := []byte{}
+type Response struct {
+}
 
+type WriterState string
+
+const (
+	StateStatusCode WriterState = "StatusCode"
+	StateHeaders    WriterState = "Headers"
+	StateBody       WriterState = "Body"
+)
+
+type Writer struct {
+	writerState WriterState
+	conn        io.Writer
+}
+
+func NewWriter(conn io.Writer) *Writer {
+	return &Writer{
+		writerState: StateStatusCode,
+		conn:        conn,
+	}
+}
+
+func (w *Writer) WriteToResponse(b []byte) (int, error) {
+	err := w.WriteStatusLine(StatusOK)
+	if err != nil {
+		return 0, err
+	}
+	err = w.WriteHeaders(GetDefaultHeaders(len(b)))
+	if err != nil {
+		return 0, err
+	}
+	return w.write(b)
+}
+
+func (w *Writer) write(b []byte) (int, error) {
+	return w.conn.Write(b)
+}
+
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	if w.writerState != StateStatusCode {
+		return fmt.Errorf("invalid Writer State for writing StatusLine")
+	}
+
+	statusLine := []byte{}
 	switch statusCode {
 	case StatusOK:
 		statusLine = []byte(HTTP_VERSION + " 200 OK\r\n")
@@ -35,20 +73,38 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 		return fmt.Errorf("unrecognized status code")
 	}
 
-	_, err := w.Write(statusLine)
+	_, err := w.write(statusLine)
+	if err == nil {
+		w.writerState = StateHeaders
+	}
 
 	return err
 }
 
-func WriteHeaders(w io.Writer, h *headers.Headers) error {
+func (w *Writer) WriteHeaders(headers *headers.Headers) error {
+	if w.writerState != StateHeaders {
+		return fmt.Errorf("invalid writer state for writing headers")
+	}
 	var err error = nil
 	var bytes []byte = []byte{}
-	h.ForEach(func(n, v string) {
+	headers.ForEach(func(n, v string) {
 		bytes = fmt.Appendf(bytes, "%s: %s\r\n", n, v)
 	})
 	bytes = fmt.Append(bytes, "\r\n")
-	_, err = w.Write(bytes)
+	_, err = w.write(bytes)
+
+	if err == nil {
+		w.writerState = StateBody
+	}
 	return err
+}
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	if w.writerState != StateBody {
+		return 0, fmt.Errorf("invalid writer state for writing body")
+	}
+
+	return w.write(p)
 }
 
 func GetDefaultHeaders(contentLen int) *headers.Headers {
