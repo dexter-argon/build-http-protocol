@@ -49,6 +49,11 @@ func (h *Headers) Replace(fieldName, fieldValue string) {
 	h.headers[fieldName] = fieldValue
 }
 
+func (h *Headers) Delete(fieldName string) {
+	fieldName = strings.ToLower(fieldName)
+	delete(h.headers, fieldName)
+}
+
 func (h *Headers) Set(fieldName, fieldValue string) {
 	fieldName = strings.ToLower(fieldName)
 	value, ok := h.headers[fieldName]

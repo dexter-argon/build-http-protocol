@@ -40,6 +40,16 @@ func NewWriter(conn io.Writer) *Writer {
 	}
 }
 
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+
+	return 0, nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+
+	return 0, nil
+}
+
 func (w *Writer) WriteToResponse(b []byte) (int, error) {
 	err := w.WriteStatusLine(StatusOK)
 	if err != nil {
@@ -82,9 +92,9 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 }
 
 func (w *Writer) WriteHeaders(headers *headers.Headers) error {
-	if w.writerState != StateHeaders {
-		return fmt.Errorf("invalid writer state for writing headers")
-	}
+	// if w.writerState != StateHeaders {
+	// 	return fmt.Errorf("invalid writer state for writing headers")
+	// }
 	var err error = nil
 	var bytes []byte = []byte{}
 	headers.ForEach(func(n, v string) {
@@ -100,11 +110,16 @@ func (w *Writer) WriteHeaders(headers *headers.Headers) error {
 }
 
 func (w *Writer) WriteBody(p []byte) (int, error) {
-	if w.writerState != StateBody {
-		return 0, fmt.Errorf("invalid writer state for writing body")
-	}
+	//if w.writerState != StateBody {
+	//	return 0, fmt.Errorf("invalid writer state for writing body")
+	//}
 
 	return w.write(p)
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+
+	return nil
 }
 
 func GetDefaultHeaders(contentLen int) *headers.Headers {
